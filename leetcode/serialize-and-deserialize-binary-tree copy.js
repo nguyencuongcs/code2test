@@ -6,12 +6,101 @@
  * }
  */
 
-var createTreeNode = (val, left, right) => {
-    var obj = {}
-    obj.val = val
-    obj.left = left ?? null
-    obj.right = right ?? null
+var TreeNode = (val) => {
+    let obj = {}
+    obj.val = val;
+    obj.left = obj.right = null;
+
     return obj
+}
+
+var checkNotNullValue = (val) => !!val && val !== "null" && val !== undefined
+
+/**
+ * 
+ * @param {*} parentNodes: first call need to inject root node
+ * @param {*} arrNextValues 
+ * @returns 
+ */
+var createTreeNode = (parentNodes = [], arrNextValues = []) => {
+    console.log('time::', new Date().toLocaleString())
+    console.log('===========START============')
+
+    if (!arrNextValues || arrNextValues.length == 0) return [[], []]
+    if (!parentNodes || parentNodes.length == 0) return [[], []]
+
+    let nextParentNodes = []
+    for (let i = 0; i < parentNodes.length; i++) {
+
+        try {
+            console.log('parentNodes::', parentNodes)
+            console.log('arrNextValues::', arrNextValues)
+
+            if (parentNodes[i] && parentNodes[i] !== undefined && checkNotNullValue(parentNodes[i].val)) {
+                // get 2 first value from arrNextValues
+                const [leftValue, rightValue] = arrNextValues
+                console.log('leftValue, rightValue::', { leftValue, rightValue })
+                console.log('parentNodes[i]::', parentNodes[i])
+
+                // create node + left, right
+
+                // if leftValue == undefined means end of arrNextValues
+                if (leftValue == undefined) {
+                    return [[], []]
+                }
+                else if (checkNotNullValue(leftValue)) {
+                    // create left node for parentNodes[i]
+                    parentNodes[i].left = TreeNode(leftValue)
+
+                    // push new node into nextParentNodes list for next call
+                    nextParentNodes.push(parentNodes[i].left)
+                }
+
+                if (checkNotNullValue(rightValue)) {
+                    // create right node for parentNodes[i]
+                    parentNodes[i].right = TreeNode(rightValue)
+
+                    // push new node into nextParentNodes list for next call
+                    nextParentNodes.push(parentNodes[i].right)
+                }
+
+                // remove 2 items
+                arrNextValues = arrNextValues.slice(2)
+            }
+        }
+        catch (err) {
+            console.error('createTreeNode err::', err)
+        }
+    }
+
+    console.log('nextParentNodes::', nextParentNodes)
+    console.log('===========END============')
+    return [nextParentNodes, arrNextValues]
+}
+
+getNodeValues = (arrNodes = [], arrValue = []) => {
+    console.log('========= START ==========')
+
+    console.log('arrNodes::', arrNodes)
+    console.log('arrValue::', arrValue)
+
+    if (!arrNodes || arrNodes.length == 0) return arrValue
+
+    let nextArrNodes = []
+
+    for (let i = 0; i < arrNodes.length; i++) {
+        if (arrNodes[i] && arrNodes[i] !== null) {
+            nextArrNodes.push(arrNodes[i] == null ? null : (arrNodes[i]?.left ?? null))
+            nextArrNodes.push(arrNodes[i] == null ? null : (arrNodes[i]?.right ?? null))
+        }
+
+        arrValue.push(arrNodes[i] == null ? "null" : arrNodes[i]?.val ?? "null")
+    }
+
+    console.log('nextArrNodes::', nextArrNodes)
+    console.log('arrValue 2::', arrValue)
+    console.log('========= END ==========')
+    return [nextArrNodes, arrValue]
 }
 
 /**
@@ -21,27 +110,58 @@ var createTreeNode = (val, left, right) => {
  * @return {string}
  */
 var serialize = function (root) {
-    const arr4 = [1, 2, [3, 4, [5, 6, [7, 8, [9, 10]]]]];
-    console.log(arr4.flat(Infinity)) // [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    var str = ""
-    if (!root.val) return str
+    let arrNodes = [], arrValue = [], str = ""
 
-    str += root.val
+    if (root && checkNotNullValue(root.val)) {
+        arrNodes = [root]
+        let count = 0;
+        let isRunning = true
+        while (arrNodes && arrNodes.length > 0 && count < 20) {
+            try {
+                console.log(`StartTime_${count}: `, new Date().toLocaleString())
+                count++
 
-    if (root.left == null && root.right == null)
-        return str
-    else {
-        if (root.left == null) str += "null,null"
-        else {
-            str += ""
+                [arrNodes, arrValue] = getNodeValues(arrNodes, arrValue)
+            }
+            catch (err) {
+                console.error('serialize err::', err)
+                isRunning = false
+                return;
+            }
         }
 
-        if (root.right == null) str += "null,null"
-        else {
+        // Xử lý các item null dư thừa ở level cuối cùng nếu có
+        if (arrValue && arrValue.length > 1) {
+            let lastCumulativeNullIndex = 0
 
+            for (let i = arrValue.length - 1; i >= 0; i--) {
+                try {
+                    console.log(`arrValue[${i}]::`, arrValue[i])
+                    console.log('check::', arrValue[i] && arrValue[i].toString() === "null")
+                    if (arrValue[i] && arrValue[i].toString() === "null") {
+                        continue
+                    }
+                    else {
+                        lastCumulativeNullIndex = i
+                        break
+                    }
+                }
+                catch (err) {
+                    console.error('err::', err)
+                }
+            }
+
+            console.log('lastCumulativeNullIndex:', lastCumulativeNullIndex)
+            if (lastCumulativeNullIndex > 0) {
+                arrValue = arrValue.slice(0, lastCumulativeNullIndex + 1)
+            }
         }
+
+        console.log('last arrValue:: ', arrValue)
     }
 
+    str = arrValue.join(",")
+    console.log('last str::', str)
     return str
 };
 
@@ -55,127 +175,37 @@ var serialize = function (root) {
  * 
  */
 var deserialize = function (data) {
-    let objTree = {};
-    let refCurrentTreeNode = null
+    let root = {};
     if (data) {
         let arrData = data.split(",")
         console.log('arrData::', arrData)
-        let level = 0, countNodeInLevel = 0, countNullValues = 0, parentArrVal
-        let mapTmp = new Map(), key = ""
 
         if (arrData.length > 0) {
             let rootVal = arrData[0]
-            objTree = createTreeNode(rootVal)
+            arrData = arrData.slice(1)
 
-            // check false && != "null" string
-            if (rootVal && rootVal != "null") {
-                // add root key->value into mapTmp
-                key = "0" // root
-                mapTmp.set(key, [rootVal])
-
-                // arrData after pop first element as root value
-                arrData = arrData.slice(1) // remove idx 0 as using for root val
+            if (checkNotNullValue(rootVal)) {
+                root = TreeNode(rootVal)
+                let parentNodes = [root]
 
                 while (arrData.length > 0) {
-                    level++;
-                    // level 0 (root): node = 2^0 = 1 node
-                    // level 1: node = 2^1 = 2
-                    // level 2: node = 2^2 = 4
-                    // level 3: node = 2^3 = 8
-                    countNodeInLevel = Math.pow(2, level) - countNullValues * 2
+                    console.log('rootTree::::', root)
+                    // [parentNodes, arrData] = createTreeNode(parentNodes, arrData)
 
-                    let checkLength = arrData.length > countNodeInLevel ? countNodeInLevel : arrData.length
-                    let arrVal = arrData.slice(0, checkLength)
-
-                    console.log('level::', level)
-                    console.log('checkLength::', checkLength)
-                    console.log('arrVal::', arrVal)
-
-                    key = `${level}.${checkLength}`
-                    let nodeValues = arrVal
-                    mapTmp.set(key, arrVal)
-
-                    // TH dac biet, do parent là root nên hard code
-                    if (level == 1) {
-                        if (arrVal[0] && arrVal[0] != "null") {
-                            objTree.left = createTreeNode(arrVal[0])
-                            // set pointer
-                            refCurrentTreeNode = objTree.left
-
-                        }
-
-                        if (arrVal[1] && arrVal[1] != "null") {
-                            objTree.right = createTreeNode(arrVal[1])
-
-                            // if pointer still null
-                            if (refCurrentTreeNode == null) {
-                                refCurrentTreeNode = objTree.right
-                            }
-                        }
-                    } else {
-                        let parentIndex = 0
-                        let countNode = 0, hasLeft = false, hasRight = false
-                        console.log('parentArrVal::', parentArrVal)
-                        for (let i = 0; i < arrVal.length; i++) {
-                            countNode++
-                            if (parentArrVal[parentIndex] && parentArrVal[parentIndex] != "null") {
-                                if (i % 2 == 0 && arrVal[i] && arrVal[i] != "null") {
-                                    refCurrentTreeNode.left = createTreeNode(arrVal[i])
-                                    hasLeft = true
-                                }
-                                else if (arrVal[i] && arrVal[i] != "null") {
-                                    refCurrentTreeNode.right = createTreeNode(arrVal[i])
-                                    hasRight = true
-                                }
-
-                                if (hasLeft) refCurrentTreeNode = refCurrentTreeNode.left ?? refCurrentTreeNode
-                                else if (hasRight) refCurrentTreeNode = refCurrentTreeNode.right ?? refCurrentTreeNode
-                                console.log('objTree::', objTree)
-
-                                // reset
-                                if (countNode == 2) {
-                                    countNode = 0
-                                    parentIndex++
-                                    hasLeft = false
-                                    hasRight = false
-                                }
-                            }
-                        }
+                    try {
+                        [parentNodes, arrData] = createTreeNode(parentNodes, arrData)
                     }
-
-                    // count null values for next round, use to determine exactly how many node has in next level (if parent node is null, subtract 2 items)
-                    countNullValues = arrVal.filter((word) => !word || word == "null").length;
-                    parentArrVal = [...arrVal]
-
-                    // // loop for items of 1 level
-                    // for (let i = 0; i < checkLength; i++) {
-                    //     // Moi lan lay 1 cap nen bo qua lan so lẻ tiếp theo
-                    //     if (i % 2 == 0) {
-
-                    //         key = `${level}.${i}`
-                    //         next = i + 1
-
-                    //         console.log('arrVal[i]::', arrVal[i])
-                    //         console.log('arrVal[next]::', arrVal[next])
-
-                    //         refCurrentTreeNode.left = createTreeNode(arrVal[i])
-                    //         refCurrentTreeNode.right = createTreeNode(arrVal[next])
-
-                    //         mapTmp.set(key, [arrVal[i] ?? null, arrVal[next] ?? null])
-                    //     }
-                    // }
-
-                    // cat bo doan arrVal da trich xuat
-                    arrData = arrData.slice(checkLength)
+                    catch (err) {
+                        console.error('err::', err)
+                        // break while
+                        arrData = []
+                    }
                 }
-
             }
-
-            console.log('mapTmp::', mapTmp)
         }
     }
 
-    return objTree
+    return root
 };
 
 /**
@@ -185,4 +215,6 @@ var deserialize = function (data) {
 
 var data = "1,2,3,null,null,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18"
 var tree = deserialize(data)
+// var serializeToString = serialize(tree)
+
 console.log(JSON.stringify(tree))
