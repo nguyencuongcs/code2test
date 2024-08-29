@@ -176,3 +176,15 @@ console.log(JSON.stringify(tree))
 
 var serializeToString = serialize(tree)
 // deserialize(serialize(tree))
+
+var test = async () => {
+    try {
+        let a = 1;
+        a = a.slice(1, 2)
+    } catch (error) {
+        console.error('test err::', error)
+        return error;
+    }
+}
+
+test().catch(err => console.log('test err 2::', err))
