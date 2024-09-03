@@ -1,18 +1,17 @@
 version: '3.8'
 services:
   redis_01:
-    image: redis:7.4-alpine
+    image: redis/redis-stack-server:7.4.0-v0 #redis:7.4-alpine
     restart: always
     ports:
       - '6379:6379'
-    command: "redis-server /usr/local/etc/redis/redis.conf"
+    command: "redis-stack-server /usr/local/etc/redis/redis.conf"
     #  redis-stack-server usr/local/etc/redis/redis.conf # redis-stack-server => load advanced modules such as JSON data type,....
     #  redis-server usr/local/etc/redis/redis.conf # redis simple types (string,hash,list,set,zset) only
     # -e REDIS_ARGS="--requirepass 123abc!@" # --protected-mode no # /usr/local/etc/redis/redis.conf
     volumes:
-      - redis_01:/data
-      #- 'redis_01:/data' # /data khi chay redis-server binh thuong
-      - ./docker_data/redis_1/redis_01.conf:/usr/local/etc/redis/redis.conf
+      - redis_stack_01:/var/lib/redis-stack      
+      - ./docker_data/redis_1/redis_stack_01.conf:/usr/local/etc/redis/redis.conf
 volumes:
-  redis_01:    
+  redis_stack_01:    
     driver: local
